@@ -1,0 +1,150 @@
+---
+title: "Derechos acuícolas a nivel nacional 1994 - 1er Trimestre 2024 [Ministerio
+  de la Producción - PRODUCE]"
+author: "SAMUEL GARCIA TURPO"
+date: "2024-05-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(magrittr)
+```
+## Paso 1 Cargar los datos
+```{r}
+# Cargar los datos
+Dataset_Derecho_Acuicola290424 <- read_delim("D:/imformes/proyectos de Rstudio/entregable2/Dataset_Derecho_Acuicola290424.csv", delim = ";")
+```
+# Convertir fechas de formato AAAAMMDD
+```{r}
+Dataset_Derecho_Acuicola290424 <- Dataset_Derecho_Acuicola290424 %>%
+  mutate(
+    FECHA_EMISION = ymd(FECHA_EMISION),
+    FECHA_VIGENCIA = ymd(FECHA_VIGENCIA),
+    FECHA_CORTE = ymd(FECHA_CORTE)
+  )
+```
+
+## Preparar los datos para análisis específico de Cusco
+```{r prepare-cusco-data}
+dataset_cusco <- Dataset_Derecho_Acuicola290424 %>%
+  filter(DEPARTAMENTO == "CUSCO") %>%
+  separate_rows(ESPECIE, sep = ", ") %>%
+  count(ESPECIE) %>%
+  arrange(desc(n))
+cusco_especies <- dataset_cusco 
+```
+
+2. **Separación de las Especies y Conteo por Departamento**:
+   Aquí, separamos las especies en filas distintas y contamos cuántas veces aparece cada especie en cada departamento.
+
+# Separar las especies y contar por departamento
+```{r}
+dataset_dep <- Dataset_Derecho_Acuicola290424 %>%
+  separate_rows(ESPECIE, sep = ", ") %>%
+  group_by(DEPARTAMENTO, ESPECIE) %>%
+  summarise(n = n(), .groups = "drop")
+```
+# Contar la cantidad total de especies únicas por departamento
+```{r}
+especies_por_departamento <- dataset_dep %>%
+  group_by(DEPARTAMENTO) %>%
+  summarise(cantidad_especies = n_distinct(ESPECIE))
+
+```
+
+3. **Visualización de Datos**:
+   Finalmente, creamos un gráfico de barras que muestra la cantidad de especies únicas por departamento.
+
+
+```{r}
+
+ggplot(especies_por_departamento, aes(x = DEPARTAMENTO, y = cantidad_especies, fill = DEPARTAMENTO)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Cantidad de Especies por Departamento",
+       x = "Departamento",
+       y = "Cantidad de Especies") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Inclina las etiquetas del eje x para mejorar la visualización
+```
+
+
+2. **Visualización de Todas las Especies en Cusco**:
+   Crea un gráfico de barras que muestre todas las especies encontradas en Cusco.
+
+```{r}
+ggplot(cusco_especies, aes(x = ESPECIE, y = n, fill = ESPECIE)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Cantidad de Especies en el Departamento de Cusco",
+       x = "Especies",
+       y = "Cantidad") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotar las etiquetas para mejor visualización
+```
+
+3. **Filtrar y Visualizar las 10 Especies Más Frecuentes**:
+   Muestra un gráfico de las 10 especies más frecuentes para evitar un gráfico sobrecargado y facilitar la interpretación.
+
+```{r}
+# Usar solo las 10 especies más frecuentes para evitar un gráfico sobrecargado
+top_especies_cusco <- cusco_especies %>%
+  top_n(10, n)
+
+ggplot(top_especies_cusco, aes(x = reorder(ESPECIE, n), y = n, fill = ESPECIE)) +
+  geom_col() +
+  coord_flip() +  # Intercambiar los ejes para mejor visualización
+  theme_minimal() +
+  labs(title = "Top 10 Especies en el Departamento de Cusco",
+       x = "Especies",
+       y = "Cantidad") +
+  theme(legend.position = "none")
+```
+# Análisis Exploratorio de Datos
+```{r}
+summary(Dataset_Derecho_Acuicola290424)
+ggplot(Dataset_Derecho_Acuicola290424, aes(x = DEPARTAMENTO, y = AREA)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+Dataset_Derecho_Acuicola290424 %>%
+  group_by(AÑO = year(FECHA_EMISION)) %>%
+  summarise(n = n()) %>%
+  ggplot(aes(x = AÑO, y = n)) +
+  geom_line()
+cor(Dataset_Derecho_Acuicola290424 %>% select_if(is.numeric))
+```
+# Preparación de Datos para Modelado
+
+```{r}
+printcp(modelo_arbol)
+plot(modelo_arbol)
+text(modelo_arbol)
+predicciones <- predict(modelo_arbol, test, type = "vector")
+mse <- mean((predicciones - test$AREA)^2)
+print(mse)
+rpart.plot(modelo_arbol)
+```
+
+# Visualización de especies por departamento
+
+```{r}
+especies_por_departamento <- train %>%
+  group_by(DEPARTAMENTO) %>%
+  summarise(cantidad_especies = n_distinct(ESPECIE))
+ggplot(especies_por_departamento, aes(x = DEPARTAMENTO, y = cantidad_especies, fill = DEPARTAMENTO)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Cantidad de Especies por Departamento", x = "Departamento", y = "Cantidad de Especies") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+# 
+
